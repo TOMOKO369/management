@@ -136,19 +136,34 @@ function renderSchedule(data) {
         const endStr = `${item.end.getMonth()+1}月${item.end.getDate()}日`;
         const weekStr = item.numDays % 7 === 0 ? `（${item.numDays / 7}週間）` : `（${item.numDays}日間）`;
 
+        let borderColor = "border-primary";
+        let titleColor = "text-primary-fixed";
+        let statusColor = "bg-primary";
+        
+        if(item.number === 1) {
+            borderColor = "border-primary"; titleColor = "text-primary-fixed"; statusColor = "bg-primary";
+        } else if (item.number === 2) {
+            borderColor = "border-secondary"; titleColor = "text-secondary"; statusColor = "bg-secondary";
+        } else {
+            borderColor = "border-on-surface-variant/40"; titleColor = "text-on-surface-variant"; statusColor = "bg-on-surface-variant/20";
+        }
+
         const html = `
-        <div class="relative flex flex-col md:flex-row items-start md:items-stretch z-10 group">
-            <!-- 円形バッジ -->
-            <div class="w-[42px] h-[42px] ${item.colors.circleBg} ${item.colors.circleText} rounded-full flex items-center justify-center font-bold text-lg shadow-sm shrink-0 mt-2 ring-[10px] ring-[#fafafa]">
-                ${item.number}
-            </div>
-            
-            <!-- 本文コンテンツ -->
-            <div class="ml-4 md:ml-6 w-full pt-1">
-                <div class="text-[15px] font-bold ${item.colors.text} mb-2 tracking-wide">${startStr}〜${endStr} <span class="text-sm border ml-2 px-2 py-0.5 rounded border-${item.colors.text.split('-')[1]}-200 bg-${item.colors.text.split('-')[1]}-50 opacity-80">${weekStr}</span></div>
-                <h3 class="text-[1.35rem] font-bold text-gray-900 mb-2 leading-tight">${item.title}</h3>
-                <p class="text-gray-600 text-[15px] leading-relaxed mb-4 md:max-w-3xl">${item.desc}</p>
-                <span class="inline-block px-4 py-1.5 text-[13px] font-bold rounded-full ${item.colors.bg} ${item.colors.text}">${item.badge}</span>
+        <div class="group relative bg-surface-container-low p-5 border-l-4 ${borderColor} hover:bg-surface-container transition-colors duration-200">
+            ${item.number === 1 ? '<div class="absolute top-0 right-0 caution-stripes h-1 w-24 opacity-40"></div>' : ''}
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <div class="text-[10px] font-label ${titleColor} mb-1 tracking-widest uppercase">PHASE_${item.number} // ${startStr}〜${endStr} ${weekStr}</div>
+                    <h3 class="font-headline text-xl text-on-surface tracking-wide mt-1">${item.title}</h3>
+                    <p class="text-on-surface-variant text-sm mt-3 max-w-md">${item.desc}</p>
+                    <div class="text-[11px] font-label text-primary-dim mt-4 opacity-80">${item.badge}</div>
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    <div class="status-clip ${statusColor} text-black font-bold font-label px-6 py-1 text-xs">PHASE ${item.number}</div>
+                    <div class="w-32 h-1 bg-surface-container-highest overflow-hidden">
+                        <div class="h-full ${statusColor} ${item.number === 1 ? 'w-[75%] animate-pulse' : 'w-full'}"></div>
+                    </div>
+                </div>
             </div>
         </div>
         `;
