@@ -1,182 +1,193 @@
-const defaultTasks = [
-    { id: 't1', phase: '企画・プロット', name: '読者層とテーマの決定', status: '完了', deadline: '2026-04-10', notes: 'ターゲット層は20代' },
-    { id: 't2', phase: '企画・プロット', name: '目次構成の作成', status: '進行中', deadline: '2026-04-15', notes: '' },
-    { id: 't3', phase: '執筆', name: '第1章', status: '未着手', deadline: '2026-05-01', notes: '' },
-    { id: 't4', phase: '編集・校正', name: '初稿のセルフ推敲', status: '未着手', deadline: '2026-06-01', notes: '' },
-    { id: 't5', phase: '表紙・デザイン', name: 'デザイナーへのラフ依頼', status: '未着手', deadline: '2026-06-10', notes: '' },
-    { id: 't6', phase: '組版・レイアウト', name: '本文のフォーマット調整', status: '未着手', deadline: '2026-06-20', notes: '' },
-    { id: 't7', phase: '印刷・電子化', name: 'KDPへ登録', status: '未着手', deadline: '2026-07-01', notes: '' },
-    { id: 't8', phase: '宣伝・販売', name: 'SNS告知', status: '未着手', deadline: '2026-07-10', notes: '' },
-];
-
-let tasks = [];
-const phasesList = [
-    { name: '企画・プロット', icon: 'lightbulb', desc: 'テーマ設計、構成作成、ターゲット層の決定など本の骨組みを作ります。' },
-    { name: '執筆', icon: 'edit_document', desc: '原稿の執筆を進めます。文字数やページの目安に沿って形にします。' },
-    { name: '編集・校正', icon: 'spellcheck', desc: '誤字脱字チェック、論理構造見直しなどプロの目線で磨き上げます。' },
-    { name: '表紙・デザイン', icon: 'palette', desc: '読者の目を惹くカバーデザイン。イラストやフォントの選定を行います。' },
-    { name: '組版・レイアウト', icon: 'format_align_justify', desc: 'ページレイアウト、フォントサイズや行間調整で読みやすくします。' },
-    { name: '印刷・電子化', icon: 'print', desc: '入稿、または電子書籍プラットフォームでのセットアップです。' },
-    { name: '宣伝・販売', icon: 'campaign', desc: '販売ストアへ展開。読者へ届けるマーケティングを開始します。' }
-];
-
-const taskTableBody = document.getElementById('task-table-body');
-const timelinePhases = document.getElementById('timeline-phases');
-const modal = document.getElementById('task-modal');
-const taskForm = document.getElementById('task-form');
-
-function init() {
-    loadData();
-    renderAll();
-    setupEvents();
-}
-
-function loadData() {
-    const saved = localStorage.getItem('publishingJourneyTasks');
-    if (saved) tasks = JSON.parse(saved);
-    else { tasks = [...defaultTasks]; saveData(); }
-}
-
-function saveData() { localStorage.setItem('publishingJourneyTasks', JSON.stringify(tasks)); }
-
-function renderAll() {
-    renderTimeline();
-    renderTable();
-}
-
-function renderTimeline() {
-    timelinePhases.innerHTML = '';
-    const stats = phasesList.map(phaseObj => {
-        const phaseTasks = tasks.filter(t => t.phase === phaseObj.name);
-        const total = phaseTasks.length;
-        const completed = phaseTasks.filter(t => t.status === '完了').length;
-        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-        let state = 'upcoming';
-        if (total > 0 && completed === total) state = 'completed';
-        else if (total > 0 && completed < total) state = 'active';
-        return { ...phaseObj, total, completed, percent, state, tasks: phaseTasks };
-    });
-
-    stats.forEach((stat, idx) => {
-        const isOdd = idx % 2 === 1;
-        let statusTitleBadge = stat.state === 'completed' ? `<span class="label-md uppercase tracking-widest text-outline">Complete</span>` : 
-            (stat.state === 'active' ? `<span class="label-md uppercase tracking-widest text-secondary font-bold">In Progress • ${stat.completed}/${stat.total} タスク</span>` : `<span class="label-md uppercase tracking-widest text-outline">Upcoming</span>`);
-
-        let mainClasses = ''; let titleColor = ''; let iconMarkup = ''; let cardMarkup = '';
-        if (stat.state === 'completed') {
-            mainClasses = 'group'; titleColor = 'text-primary';
-            iconMarkup = `<div class="absolute left-4 md:left-1/2 -translate-x-1/2 z-10"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary ring-8 ring-background"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span></div></div>`;
-            cardMarkup = `<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 hover:shadow-xl transition-shadow duration-500"><p class="text-body-lg text-on-surface-variant">${stat.desc}</p><div class="mt-4"><span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold uppercase rounded-full">Completed</span></div>${renderMiniTasks(stat.tasks)}</div>`;
-        } else if (stat.state === 'active') {
-            mainClasses = 'group'; titleColor = 'text-secondary';
-            iconMarkup = `<div class="absolute left-4 md:left-1/2 -translate-x-1/2 z-10"><div class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-on-secondary ring-8 ring-secondary-fixed shadow-[0_0_20px_rgba(142,78,20,0.4)] animate-pulse"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">${stat.icon}</span></div></div>`;
-            cardMarkup = `<div class="bg-surface-container-lowest p-6 rounded-xl ring-2 ring-secondary/20 shadow-xl bg-gradient-to-br from-surface-container-lowest to-surface-container-low"><p class="text-body-lg text-on-surface mb-4">${stat.desc}</p><div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden"><div class="bg-secondary h-full" style="width: ${stat.percent}%"></div></div><div class="mt-2 text-[10px] font-bold text-on-surface-variant">${stat.percent}% Complete</div>${renderMiniTasks(stat.tasks)}</div>`;
-        } else {
-            mainClasses = 'group opacity-60 hover:opacity-100 transition-opacity'; titleColor = 'text-primary';
-            iconMarkup = `<div class="absolute left-4 md:left-1/2 -translate-x-1/2 z-10"><div class="w-8 h-8 rounded-full bg-surface-container-highest border-2 border-outline-variant flex items-center justify-center text-outline ring-8 ring-background"><span class="material-symbols-outlined text-sm">${stat.icon}</span></div></div>`;
-            cardMarkup = `<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/15"><p class="text-body-lg text-on-surface-variant">${stat.desc}</p>${renderMiniTasks(stat.tasks)}</div>`;
+const templates = {
+    manga: [
+        {
+            title: "ネーム・下書きフェーズ",
+            duration: 28, // 4 weeks
+            desc: "プロット作成、ネーム切り、コマ割り、キャラクターデザイン、そして全ページの下書きを完了させます。",
+            badge: "必要時間 約40h　週10hで4週間ちょうど",
+            colors: { bg: "bg-indigo-100", text: "text-indigo-700", circleBg: "bg-indigo-50", circleText: "text-indigo-600" }
+        },
+        {
+            title: "ペン入れ・トーン・仕上げフェーズ",
+            duration: 14, // 2 weeks
+            desc: "キャラクターのペン入れ、背景の描き込み、トーン貼りなどの作業。セリフの写植・ベタ塗りもここで行います。",
+            badge: "必要時間 約30h　週15hで2週間",
+            colors: { bg: "bg-emerald-100", text: "text-emerald-700", circleBg: "bg-emerald-50", circleText: "text-emerald-600" }
+        },
+        {
+            title: "表紙制作・データ最終チェック・入稿",
+            duration: 5, // 5 days
+            desc: "フルカラーの表紙制作、全ページのノンブル確認、モアレ等の最終確認を行い、印刷所へデータを入稿します。",
+            badge: "必要時間 約10h　早めに入稿すると余裕が生まれる",
+            colors: { bg: "bg-amber-100", text: "text-amber-800", circleBg: "bg-amber-50", circleText: "text-amber-700" }
         }
+    ],
+    book: [
+        {
+            title: "執筆・素材制作フェーズ",
+            duration: 28,
+            desc: "まえがき・個人情報コラム・第0章・第1章・第2章の本文執筆と図版作成。画面キャプチャ撮影もここで完了させる。<br>週2章ペースは無理→<b>週1章ペース</b>で進める。",
+            badge: "必要時間 約35〜40h　週10hで4週間ちょうど",
+            colors: { bg: "bg-indigo-100", text: "text-indigo-700", circleBg: "bg-indigo-50", circleText: "text-indigo-600" }
+        },
+        {
+            title: "在庫管理章・第4章・あとがき＋第三者レビュー",
+            duration: 14,
+            desc: "残りの執筆を終わらせながら、レビュアー（編集や協力者）に内容を確認してもらう。修正は音声等で効率化。表紙デザインも並行して進める。",
+            badge: "必要時間 約20h　週10hで2週間",
+            colors: { bg: "bg-emerald-100", text: "text-emerald-700", circleBg: "bg-emerald-50", circleText: "text-emerald-600" }
+        },
+        {
+            title: "DTP・組版・入稿",
+            duration: 5,
+            desc: "全ページレイアウト確定と入稿データ作成。ここは連休などをできるだけ使って前倒しすると楽になる。",
+            badge: "必要時間 約15h　先に進めておくと余裕が生まれる",
+            colors: { bg: "bg-amber-100", text: "text-amber-800", circleBg: "bg-amber-50", circleText: "text-amber-700" }
+        }
+    ],
+    novel: [
+        {
+            title: "プロット・本文執筆フェーズ",
+            duration: 35,
+            desc: "全体のプロット構成を固めた後、一気に本文を書き上げる。毎日一定の文字数を目標に粛々と執筆する。",
+            badge: "必要時間 約50h　毎日コツコツ進める",
+            colors: { bg: "bg-indigo-100", text: "text-indigo-700", circleBg: "bg-indigo-50", circleText: "text-indigo-600" }
+        },
+        {
+            title: "推敲・校正フェーズ",
+            duration: 14,
+            desc: "時間をおいてから全体を読み直し、矛盾点や誤字脱字、表現のブラッシュアップを徹底的に行う。",
+            badge: "必要時間 約15h　他者の目も借りると吉",
+            colors: { bg: "bg-emerald-100", text: "text-emerald-700", circleBg: "bg-emerald-50", circleText: "text-emerald-600" }
+        },
+        {
+            title: "表紙イラスト発注・組版・入稿",
+            duration: 7,
+            desc: "表紙や挿絵の完成を待ち、本文のレイアウトを整える（ルビや禁則処理の確認）。PDFやEPUBデータを作成し入稿。",
+            badge: "必要時間 約10h　表紙依頼は事前に済ませておく",
+            colors: { bg: "bg-amber-100", text: "text-amber-800", circleBg: "bg-amber-50", circleText: "text-amber-700" }
+        }
+    ]
+};
 
-        let rowClass = isOdd ? 'md:flex-row-reverse' : 'md:flex-row';
-        let textSide = isOdd ? 'md:text-left pl-12' : 'md:text-right pr-12';
-        let cardSide = isOdd ? 'pr-0 md:pr-12 pl-12 md:pl-0' : 'pl-12 md:pl-12';
+const deadlineInput = document.getElementById('deadline-date');
+const typeSelect = document.getElementById('project-type');
+const generateBtn = document.getElementById('generate-btn');
+const outputSection = document.getElementById('schedule-output');
+const timelineContainer = document.getElementById('timeline-container');
 
-        timelinePhases.insertAdjacentHTML('beforeend', `
-        <div class="relative flex flex-col ${rowClass} items-center justify-between ${mainClasses}">
-            <div class="hidden md:block w-5/12 ${textSide}">
-                ${statusTitleBadge}
-                <h3 class="text-3xl font-headline italic font-semibold ${titleColor} mt-1 cursor-pointer hover:underline underline-offset-4" onclick="filterTable('${stat.name}')">${stat.name.split('・')[0]}</h3>
-            </div>
-            ${iconMarkup}
-            <div class="w-full md:w-5/12 ${cardSide}">
-                <div class="md:hidden mb-2 ml-12">
-                    ${statusTitleBadge}
-                    <h3 class="text-2xl font-headline italic font-semibold ${titleColor}">${stat.name}</h3>
-                </div>
-                ${cardMarkup}
-            </div>
-        </div>`);
-    });
-}
+// 初期値：現在の年から6月1日をセット
+const today = new Date();
+let defaultYear = today.getFullYear();
+if (today.getMonth() > 5) defaultYear++;
+deadlineInput.value = `${defaultYear}-06-01`;
 
-function renderMiniTasks(pt) {
-    if(!pt || pt.length===0) return '';
-    return '<div class="mt-4 flex flex-col gap-2 pt-4 border-t border-outline-variant/20">' + pt.map(t => {
-        let i = t.status === '完了' ? '<span class="material-symbols-outlined text-[#10b981] text-sm">check_circle</span>' : 
-               (t.status === '進行中' ? '<span class="material-symbols-outlined text-secondary text-sm">pending</span>' : '<span class="material-symbols-outlined text-outline text-sm">radio_button_unchecked</span>');
-        return `<div class="flex items-center gap-2 text-sm text-on-surface-variant font-body cursor-pointer hover:text-primary transition-colors" onclick="editTask('${t.id}')">${i} <span class="truncate">${t.name}</span></div>`;
-    }).join('') + '</div>';
-}
+let currentScheduleData = [];
 
-function renderTable(filter = null) {
-    taskTableBody.innerHTML = '';
-    let disp = filter ? tasks.filter(t => t.phase === filter) : tasks;
-    if(disp.length===0) { taskTableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-outline">タスクがありません。</td></tr>`; return; }
+generateBtn.addEventListener('click', () => {
+    const deadlineVal = deadlineInput.value;
+    if(!deadlineVal) {
+        alert("必ず締切日（出版日）を入力してください！");
+        return;
+    }
+
+    const type = typeSelect.value;
+    const template = templates[type];
     
-    disp.forEach(t => {
-        let bc = 'bg-surface-variant text-on-surface';
-        if(t.status === '完了') bc = 'bg-[#10b981]/10 text-[#059669] border border-[#10b981]/20';
-        else if(t.status === '進行中') bc = 'bg-secondary-container/20 text-secondary border border-secondary/20';
-        else if(t.status === '確認中') bc = 'bg-primary-container/20 text-primary border border-primary/20';
+    // 逆算処理
+    let currentDate = new Date(deadlineVal);
+    currentScheduleData = [];
 
-        taskTableBody.insertAdjacentHTML('beforeend', `
-            <tr class="hover:bg-surface-container-high transition-colors group">
-                <td class="p-4 whitespace-nowrap"><span class="px-2 py-1 bg-surface-variant/50 rounded text-xs font-bold text-outline">${t.phase.split('・')[0]}</span></td>
-                <td class="p-4 font-bold cursor-pointer hover:text-primary hover:underline underline-offset-4" onclick="editTask('${t.id}')">${t.name}</td>
-                <td class="p-4"><span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${bc}">${t.status}</span></td>
-                <td class="p-4 text-outline font-mono text-xs">${t.deadline||'-'}</td>
-                <td class="p-4 text-right">
-                    <button onclick="editTask('${t.id}')" class="p-2 text-outline hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">edit</span></button>
-                    <button onclick="deleteTask('${t.id}')" class="p-2 text-outline hover:text-error transition-colors"><span class="material-symbols-outlined text-sm">delete</span></button>
-                </td>
-            </tr>`);
+    // 後ろ（Phase 3）から順にさかのぼって計算
+    for(let i = template.length - 1; i >= 0; i--) {
+        const phase = template[i];
+        
+        // 終了日（開始日から計算した最終日なので、現在のカーソルが終了日）
+        let phaseEndDate = new Date(currentDate);
+        
+        // 開始日（終了日から 所要日数-1日 さかのぼる）
+        let phaseStartDate = new Date(currentDate);
+        phaseStartDate.setDate(phaseStartDate.getDate() - (phase.duration - 1));
+        
+        currentScheduleData.unshift({
+            title: phase.title,
+            desc: phase.desc,
+            badge: phase.badge,
+            colors: phase.colors,
+            start: phaseStartDate,
+            end: phaseEndDate,
+            numDays: phase.duration,
+            number: i + 1
+        });
+
+        // 次の計算のため、現在の日付を 今のフェーズの開始日の「前日」にセットする
+        currentDate = new Date(phaseStartDate);
+        currentDate.setDate(currentDate.getDate() - 1);
+    }
+
+    renderSchedule(currentScheduleData);
+});
+
+function renderSchedule(data) {
+    timelineContainer.innerHTML = '';
+    
+    data.forEach(item => {
+        const startStr = `${item.start.getMonth()+1}月${item.start.getDate()}日`;
+        const endStr = `${item.end.getMonth()+1}月${item.end.getDate()}日`;
+        const weekStr = item.numDays % 7 === 0 ? `（${item.numDays / 7}週間）` : `（${item.numDays}日間）`;
+
+        const html = `
+        <div class="relative flex flex-col md:flex-row items-start md:items-stretch z-10 group">
+            <!-- 円形バッジ -->
+            <div class="w-[42px] h-[42px] ${item.colors.circleBg} ${item.colors.circleText} rounded-full flex items-center justify-center font-bold text-lg shadow-sm shrink-0 mt-2 ring-[10px] ring-[#fafafa]">
+                ${item.number}
+            </div>
+            
+            <!-- 本文コンテンツ -->
+            <div class="ml-4 md:ml-6 w-full pt-1">
+                <div class="text-[15px] font-bold ${item.colors.text} mb-2 tracking-wide">${startStr}〜${endStr} <span class="text-sm border ml-2 px-2 py-0.5 rounded border-${item.colors.text.split('-')[1]}-200 bg-${item.colors.text.split('-')[1]}-50 opacity-80">${weekStr}</span></div>
+                <h3 class="text-[1.35rem] font-bold text-gray-900 mb-2 leading-tight">${item.title}</h3>
+                <p class="text-gray-600 text-[15px] leading-relaxed mb-4 md:max-w-3xl">${item.desc}</p>
+                <span class="inline-block px-4 py-1.5 text-[13px] font-bold rounded-full ${item.colors.bg} ${item.colors.text}">${item.badge}</span>
+            </div>
+        </div>
+        `;
+        timelineContainer.insertAdjacentHTML('beforeend', html);
     });
-    if (filter) document.getElementById('task-list-section').scrollIntoView({ behavior: 'smooth' });
+
+    outputSection.classList.remove('hidden');
+    
+    // スクロールして表示
+    setTimeout(() => {
+        outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 }
 
-window.filterTable = (p) => { renderTable(p); document.querySelector('#task-list-section h2').innerHTML = `タスク: <span class="text-secondary">${p}</span> <button onclick="renderTable(); this.parentElement.innerHTML='すべてのタスク'" class="text-xs text-outline underline ml-4 hover:text-primary">すべて表示</button>`; }
-window.editTask = (id) => { openModal(true, id); };
-window.deleteTask = (id) => { if (confirm('このタスクを削除しますか？')) { tasks = tasks.filter(t => t.id !== id); saveData(); renderAll(); } };
-
-function openModal(isEdit, id) {
-    taskForm.reset(); document.getElementById('modal-title').textContent = isEdit ? '編集' : '新規タスク';
-    if(isEdit) {
-        let t = tasks.find(x => x.id === id);
-        if(t) {
-            document.getElementById('task-id').value = t.id;
-            Array.from(document.getElementById('task-phase').options).forEach(o => { if(o.value === t.phase) document.getElementById('task-phase').value = o.value; });
-            document.getElementById('task-name').value = t.name; document.getElementById('task-status').value = t.status;
-            document.getElementById('task-deadline').value = t.deadline||''; document.getElementById('task-notes').value = t.notes||'';
-        }
-    } else document.getElementById('task-id').value = '';
-    modal.classList.remove('hidden'); modal.classList.add('flex');
-}
-function closeModal() { modal.classList.add('hidden'); modal.classList.remove('flex'); }
-
-function setupEvents() {
-    document.getElementById('add-task-btn').addEventListener('click', () => openModal(false));
-    document.getElementById('close-modal-btn').addEventListener('click', closeModal);
-    document.getElementById('cancel-modal-btn').addEventListener('click', closeModal);
-    modal.addEventListener('click', e => { if(e.target === modal) closeModal(); });
-    taskForm.addEventListener('submit', e => {
-        e.preventDefault();
-        let td = { id: document.getElementById('task-id').value || 't_'+Date.now(), phase: document.getElementById('task-phase').value, name: document.getElementById('task-name').value, status: document.getElementById('task-status').value, deadline: document.getElementById('task-deadline').value, notes: document.getElementById('task-notes').value };
-        const i = tasks.findIndex(x => x.id === td.id);
-        if(i !== -1) tasks[i] = td; else tasks.push(td);
-        saveData(); renderAll(); closeModal();
+// CSV書き出し機能
+document.getElementById('export-csv-btn').addEventListener('click', () => {
+    if(currentScheduleData.length === 0) return;
+    
+    const BOM = '\uFEFF';
+    const headers = ['フェーズ', '開始日', '終了日', '必要期間', '工程のタイトル'];
+    const rows = currentScheduleData.map(d => {
+        const s = `${d.start.getFullYear()}/${d.start.getMonth()+1}/${d.start.getDate()}`;
+        const e = `${d.end.getFullYear()}/${d.end.getMonth()+1}/${d.end.getDate()}`;
+        return [
+            d.number,
+            s,
+            e,
+            `"${d.numDays}日間"`,
+            `"${d.title.replace(/"/g, '""')}"`
+        ].join(',');
     });
-    document.getElementById('export-btn').addEventListener('click', () => {
-        const BOM = '\uFEFF'; const h = ['ID', '工程(Phase)', 'タスク名(Task)', 'ステータス(Status)', '期日(Deadline)', 'メモ(Notes)'];
-        const r = tasks.map(t => [t.id, `"${t.phase}"`,`"${t.name.replace(/"/g, '""')}"`,`"${t.status}"`, t.deadline, `"${(t.notes||'').replace(/"/g, '""')}"`].join(','));
-        const u = URL.createObjectURL(new Blob([BOM + h.join(',') + '\n' + r.join('\n')], {type:'text/csv;charset=utf-8;'}));
-        const a = document.createElement('a'); a.href = u; a.download = 'publishing_timeline.csv'; a.click(); URL.revokeObjectURL(u);
-    });
-    document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
-    document.getElementById('import-file').addEventListener('change', e => {
-        if(!e.target.files[0]) return;
-        const r = new FileReader();
-        r.onload = ev => { try { let j = JSON.parse(ev.target.result); if(Array.isArray(j)){ tasks=j; saveData(); renderAll(); alert('インポート成功'); } } catch(err){ alert('エラー');} e.target.value=''; };
-        r.readAsText(e.target.files[0]);
-    });
-}
-init();
+    
+    const csvContent = BOM + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `出版逆算スケジュール_${deadlineInput.value}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
